@@ -1,165 +1,137 @@
 //
-//  BitPhase.cpp
+// BitPhase.cpp
 //
-//
-//  Created by Adrian Vos on 30/05/2026.
-//
-
 
 #include "ComputerCard.h"
 
 class BitPhase : public ComputerCard
 {
 public:
-
     virtual void ProcessSample() override
     {
         int32_t in = AudioIn1();
 
         int32_t rateKnob  = KnobVal(Knob::Main);
         int32_t depthKnob = KnobVal(Knob::X);
-        int32_t bitrotKnob = KnobVal(Knob::Y);
+        int32_t yKnob     = KnobVal(Knob::Y);
 
         //----------------------------------------
-        // Burst trigger
+        // Mode select
 
-        if (PulseIn1RisingEdge())
+        enum Mode { PHASER_ONLY, MIX, BURST };
+
+        Mode mode;
+        switch (SwitchVal())
         {
-            burstCounter = 12000 + ((bitrotKnob * 24000) >> 12);
+            case Switch::Up:    mode = PHASER_ONLY; break;
+            case Switch::Middle:mode = MIX; break;
+            default:            mode = BURST; break;
         }
 
-        if (burstCounter > 0)
-            burstCounter--;
-
-        bool burstActive = burstCounter > 0;
-
         //----------------------------------------
-        // LFO
+        // LFO clocks
 
-        if (SwitchVal() != Switch::Down)
+        if (mode != BURST)
         {
             uint32_t increment =
-                20 + ((uint32_t)rateKnob << 2);
+                30000 + ((uint32_t)rateKnob * 1200000) / 4095;
 
-            phase += increment;
+            phaserPhase += increment;
+            tremPhase   += (increment >> 2); // 1/4 speed
+        }
+        else
+        {
+            phaserPhase += 200000; // unstable fast motion
+            tremPhase   += 50000;
         }
 
-        int32_t lfo =
-            (phase & 0x80000000)
-            ? (0xFFFFFFFF - phase) >> 19
-            : phase >> 19;
+        //----------------------------------------
+        // Triangle LFO generator
 
-        lfo -= 2048;
+        auto triLFO = [](uint32_t p) -> int32_t
+        {
+            uint32_t v = (p >> 20) & 4095;
+            int32_t x = (v < 2048) ? v : (4095 - v);
+            return (x - 1024) << 1;
+        };
+
+        int32_t phaserLfo = triLFO(phaserPhase);
+        int32_t tremLfo   = triLFO(tremPhase);
+
+        //----------------------------------------
+        // Depth control (Y = phaser intensity)
+
+        int32_t sweep =
+            1024 + ((phaserLfo * yKnob) >> 13);
+
+        if (sweep < 96)   sweep = 96;
+        if (sweep > 1920) sweep = 1920;
 
         //----------------------------------------
         // Tremolo
 
-        int32_t depth = depthKnob;
-
         int32_t tremGain =
-            2048 + ((lfo * depth) >> 12);
+            2048 + ((tremLfo * depthKnob) >> 12);
 
-        if (tremGain < 0)
-            tremGain = 0;
+        if (tremGain < 0) tremGain = 0;
 
         int32_t tremolo =
             (in * tremGain) >> 11;
 
         //----------------------------------------
-        // Phaser coefficient
+        // MXR-style 4-stage phaser with feedback
 
-        int32_t sweep =
-            1024 +
-            ((lfo * depthKnob) >> 13);
+        int32_t input = in + ((fb * 3000) >> 12);
 
-        if (sweep < 64)
-            sweep = 64;
-
-        if (sweep > 1984)
-            sweep = 1984;
-
-        //----------------------------------------
-        // Four-stage allpass phaser
-
-        int32_t x;
+        int32_t x = input;
         int32_t y;
 
-        x = in;
         y = ap1_z1 + (((sweep * (x - ap1_y1)) >> 11));
-        ap1_z1 = x;
-        ap1_y1 = y;
+        ap1_z1 = x; ap1_y1 = y; x = y;
 
-        x = y;
         y = ap2_z1 + (((sweep * (x - ap2_y1)) >> 11));
-        ap2_z1 = x;
-        ap2_y1 = y;
+        ap2_z1 = x; ap2_y1 = y; x = y;
 
-        x = y;
         y = ap3_z1 + (((sweep * (x - ap3_y1)) >> 11));
-        ap3_z1 = x;
-        ap3_y1 = y;
+        ap3_z1 = x; ap3_y1 = y; x = y;
 
-        x = y;
         y = ap4_z1 + (((sweep * (x - ap4_y1)) >> 11));
-        ap4_z1 = x;
-        ap4_y1 = y;
+        ap4_z1 = x; ap4_y1 = y;
 
-        int32_t phaser =
-            (in + y) >> 1;
+        int32_t phaser = in - (y >> 1);
 
-        //----------------------------------------
-        // Blend modulation from Audio/CV In 2
-
-        int32_t blendCV = AudioIn2();
-
-        int32_t blend =
-            2048 + blendCV;
-
-        if (blend < 0)
-            blend = 0;
-
-        if (blend > 4095)
-            blend = 4095;
-
-        int32_t combined =
-            ((phaser * (4095 - blend))
-            + (tremolo * blend))
-            >> 12;
+        fb = (y - (in >> 2)) >> 1;
 
         //----------------------------------------
-        // Switch modes
+        // Mode routing
 
-        int32_t output;
+        int32_t output = phaser;
 
-        switch (SwitchVal())
+        if (mode == MIX)
         {
-            case Switch::Up:
-                output = tremolo;
-                break;
+            int32_t mix = 2048; // 50/50 fixed mix
 
-            case Switch::Middle:
-                output = combined;
-                break;
-
-            default:
-                output = combined;
-                break;
+            output =
+                ((phaser * mix) +
+                 (tremolo * (4095 - mix))) >> 12;
+        }
+        else if (mode == BURST)
+        {
+            output = phaser + (phaser >> 1);
         }
 
         //----------------------------------------
-        // Bitrot
+        // Bitcrush / lo-fi (Y now also influences texture slightly)
 
-        int32_t corruption =
-            bitrotKnob;
+        int32_t corruption = yKnob;
 
-        if (burstActive)
+        if (mode == BURST)
             corruption += 1500;
 
         if (corruption > 4095)
             corruption = 4095;
 
-        uint32_t holdLength =
-            1 + (corruption >> 8);
+        uint32_t holdLength = 1 + (corruption >> 8);
 
         if (++holdCounter >= holdLength)
         {
@@ -169,92 +141,68 @@ public:
 
         output = heldSample;
 
-        uint32_t maskShift =
-            corruption >> 10;
+        uint32_t maskShift = corruption >> 10;
+        output = (output >> maskShift) << maskShift;
 
-        output =
-            (output >> maskShift)
-            << maskShift;
+        rng = rng * 1664525u + 1013904223u;
 
-        rng =
-            rng * 1664525u +
-            1013904223u;
-
-        uint32_t repeatChance =
-            corruption >> 3;
-
+        uint32_t repeatChance = corruption >> 3;
         if ((rng & 0x3FF) < repeatChance)
-        {
             output = previousOutput;
-        }
 
         previousOutput = output;
 
         //----------------------------------------
-        // Stereo output
+        // Output
 
         AudioOut1(output);
-
-        AudioOut2(
-            output +
-            ((lfo * 256) >> 12));
+        AudioOut2(output + ((phaserLfo * 256) >> 12));
 
         //----------------------------------------
-        // CV outputs
+        // CV
 
-        CVOut1(lfo);
-
-        CVOut2(
-            (corruption - 2048));
+        CVOut1(phaserLfo);
+        CVOut2(tremLfo);
 
         //----------------------------------------
-        // Pulse outputs
+        // Pulses
 
-        PulseOut1(burstActive);
+        PulseOut1(mode == BURST);
 
-        bool lfoPulse =
-            ((phase & 0x80000000) != lastLfoState);
-
+        bool lfoPulse = (phaserPhase & 0x80000000);
         PulseOut2(lfoPulse);
 
-        lastLfoState =
-            (phase & 0x80000000);
-
         //----------------------------------------
-        // LEDs
+        // LEDs (fixed scaling)
 
         LedBrightness(0, rateKnob);
 
-        LedBrightness(1,
-            (lfo + 2048));
+        int32_t lfoLed = (phaserLfo + 2048);
+        if (lfoLed < 0) lfoLed = 0;
+        if (lfoLed > 4095) lfoLed = 4095;
+        LedBrightness(1, lfoLed);
 
-        LedBrightness(2,
-            sweep << 1);
+        int32_t sweepLed = sweep;
+        LedBrightness(2, sweepLed);
 
-        LedBrightness(3,
-            corruption);
+        int32_t corrLed = corruption;
+        if (corrLed > 4095) corrLed = 4095;
+        LedBrightness(3, corrLed);
 
-        LedOn(4, burstActive);
-
-        LedOn(5,
-            PulseIn1());
+        LedOn(4, mode == BURST);
+        LedOn(5, PulseIn1());
     }
 
 private:
+    uint32_t phaserPhase = 0;
+    uint32_t tremPhase   = 0;
 
-    uint32_t phase = 0;
+    int32_t ap1_z1 = 0, ap1_y1 = 0;
+    int32_t ap2_z1 = 0, ap2_y1 = 0;
+    int32_t ap3_z1 = 0, ap3_y1 = 0;
+    int32_t ap4_z1 = 0, ap4_y1 = 0;
 
-    int32_t ap1_z1 = 0;
-    int32_t ap1_y1 = 0;
-
-    int32_t ap2_z1 = 0;
-    int32_t ap2_y1 = 0;
-
-    int32_t ap3_z1 = 0;
-    int32_t ap3_y1 = 0;
-
-    int32_t ap4_z1 = 0;
-    int32_t ap4_y1 = 0;
+    int32_t fb = 0;
 
     uint32_t rng = 1;
 
@@ -262,10 +210,6 @@ private:
     int32_t heldSample = 0;
 
     int32_t previousOutput = 0;
-
-    uint32_t burstCounter = 0;
-
-    bool lastLfoState = false;
 };
 
 int main()
