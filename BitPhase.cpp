@@ -14,6 +14,9 @@ public:
         int32_t rateKnob  = KnobVal(Knob::Main);
         int32_t depthKnob = KnobVal(Knob::X);
         int32_t yKnob     = KnobVal(Knob::Y);
+        int32_t k = rateKnob; // 0–4095
+        float norm = (float)k / 4095.0f;
+        
 
         //----------------------------------------
         // Mode select
@@ -30,21 +33,37 @@ public:
 
         //----------------------------------------
         // LFO clocks
+        
+        float slowAmt = norm * norm;   // from earlier knob normalization
 
+        float phaserHz = 0.05f + slowAmt * (6.0f - 0.05f);
+
+        uint32_t phaserInc =
+            (uint32_t)((phaserHz * PHASE_SCALE) / FS);
+
+        
+        float fastAmt = norm;
+
+        float tremHz = 0.5f + fastAmt * (20.0f - 0.5f);
+
+        uint32_t tremInc =
+            (uint32_t)((tremHz * PHASE_SCALE) / FS);
+
+        
         if (mode != BURST)
         {
             uint32_t increment =
-                30000 + ((uint32_t)rateKnob * 1200000) / 4095;
-
-            phaserPhase += increment;
-            tremPhase   += (increment >> 2); // 1/4 speed
-        }
+            30000 + ((uint32_t)rateKnob * 1200000) / 4095;
+            
+            phaserPhase += phaserInc;
+            tremPhase   += tremInc;
+            }
         else
         {
             phaserPhase += 200000; // unstable fast motion
             tremPhase   += 50000;
         }
-
+        
         //----------------------------------------
         // Triangle LFO generator
 
@@ -52,7 +71,7 @@ public:
         {
             uint32_t v = (p >> 20) & 4095;
             int32_t x = (v < 2048) ? v : (4095 - v);
-            return (x - 1024) << 1;
+            return x - 2048;
         };
 
         int32_t phaserLfo = triLFO(phaserPhase);
@@ -100,7 +119,7 @@ public:
 
         int32_t phaser = in - (y >> 1);
 
-        fb = (y - (in >> 2)) >> 1;
+        fb = (y * 3) >> 3; // 0.375 feedback
 
         //----------------------------------------
         // Mode routing
@@ -194,6 +213,10 @@ public:
     }
 
 private:
+    
+    static constexpr float FS = 48000.0f;
+    static constexpr float PHASE_SCALE = 4294967296.0f;
+    
     uint32_t phaserPhase = 0;
     uint32_t tremPhase   = 0;
 
