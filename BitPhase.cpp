@@ -10,7 +10,7 @@ public:
     virtual void ProcessSample() override
     {
         int32_t in = AudioIn1();
-        int32_t rateCV = AudioIn2() >> 4;
+        int32_t rateCV = AudioIn2();
         
         int32_t rateKnob  = KnobVal(Knob::Main);
         int32_t depthKnob = KnobVal(Knob::X);
@@ -110,11 +110,10 @@ public:
         //----------------------------------------
         // Depth control (X = phaser intensity)
 
-        int32_t sweep =
-            1024 + ((phaserLfo * depthKnob) >> 11);
+        sweep = 1500 + ((phaserLfo * depthKnob) >> 12);
 
-        if (sweep < 16)   sweep = 16;
-        if (sweep > 3000) sweep = 3000;
+        if (sweep < 200)  sweep = 200;
+        if (sweep > 2800) sweep = 2800;
 
         //----------------------------------------
         // Tremolo
@@ -174,7 +173,7 @@ public:
         int32_t phaser =
             ((in * 7) >> 3) - y;
 
-        fb = (y * 3) >> 2;
+        fb = y >> 2;
 
         //----------------------------------------
         // Mode routing
