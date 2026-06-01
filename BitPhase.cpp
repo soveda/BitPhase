@@ -81,10 +81,10 @@ public:
         // Depth control (X = phaser intensity)
 
         int32_t sweep =
-            768 + ((phaserLfo * depthKnob) >> 12);;
+            1024 + ((phaserLfo * depthKnob) >> 11);
 
-        if (sweep < 96)   sweep = 96;
-        if (sweep > 1920) sweep = 1920;
+        if (sweep < 16)   sweep = 16;
+        if (sweep > 3000) sweep = 3000;
 
         //----------------------------------------
         // Tremolo
@@ -105,21 +105,46 @@ public:
         int32_t x = input;
         int32_t y;
 
-        y = ap1_z1 + (((sweep * (x - ap1_y1)) >> 11));
-        ap1_z1 = x; ap1_y1 = y; x = y;
+        int32_t a = sweep;
 
-        y = ap2_z1 + (((sweep * (x - ap2_y1)) >> 11));
-        ap2_z1 = x; ap2_y1 = y; x = y;
+        // stage 1
+        y = ap1_x1 +
+            ((a * ap1_y1) >> 12) -
+            ((a * x) >> 12);
 
-        y = ap3_z1 + (((sweep * (x - ap3_y1)) >> 11));
-        ap3_z1 = x; ap3_y1 = y; x = y;
+        ap1_x1 = x;
+        ap1_y1 = y;
+        x = y;
 
-        y = ap4_z1 + (((sweep * (x - ap4_y1)) >> 11));
-        ap4_z1 = x; ap4_y1 = y;
+        // stage 2
+        y = ap2_x1 +
+            ((a * ap2_y1) >> 12) -
+            ((a * x) >> 12);
 
-        int32_t phaser = ((in * 3) >> 2) - y;
+        ap2_x1 = x;
+        ap2_y1 = y;
+        x = y;
 
-        fb = y >> 1;         // 0.5
+        // stage 3
+        y = ap3_x1 +
+            ((a * ap3_y1) >> 12) -
+            ((a * x) >> 12);
+
+        ap3_x1 = x;
+        ap3_y1 = y;
+        x = y;
+
+        // stage 4
+        y = ap4_x1 +
+            ((a * ap4_y1) >> 12) -
+            ((a * x) >> 12);
+
+        ap4_x1 = x;
+        ap4_y1 = y;
+        int32_t phaser =
+            ((in * 7) >> 3) - y;
+
+        fb = (y * 3) >> 2;
 
         //----------------------------------------
         // Mode routing
@@ -175,7 +200,7 @@ public:
         // Output
 
         AudioOut1(output);
-        AudioOut2(output + ((phaserLfo * 256) >> 12));
+        AudioOut2(output);
 
         //----------------------------------------
         // CV
@@ -220,11 +245,10 @@ private:
     uint32_t phaserPhase = 0;
     uint32_t tremPhase   = 0;
 
-    int32_t ap1_z1 = 0, ap1_y1 = 0;
-    int32_t ap2_z1 = 0, ap2_y1 = 0;
-    int32_t ap3_z1 = 0, ap3_y1 = 0;
-    int32_t ap4_z1 = 0, ap4_y1 = 0;
-
+    int32_t ap1_x1 = 0, ap1_y1 = 0;
+    int32_t ap2_x1 = 0, ap2_y1 = 0;
+    int32_t ap3_x1 = 0, ap3_y1 = 0;
+    int32_t ap4_x1 = 0, ap4_y1 = 0;
     int32_t fb = 0;
 
     uint32_t rng = 1;
