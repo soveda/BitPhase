@@ -10,14 +10,30 @@ public:
     virtual void ProcessSample() override
     {
         int32_t in = AudioIn1();
-
+        int32_t rateCV = AudioIn2() >> 4;
+        
         int32_t rateKnob  = KnobVal(Knob::Main);
         int32_t depthKnob = KnobVal(Knob::X);
         int32_t yKnob     = KnobVal(Knob::Y);
-        int32_t k = rateKnob; // 0–4095
-        float norm = (float)k / 4095.0f;
         
+        // CV modulation
+        rateKnob  += rateCV;
+        depthKnob += CVIn1();
+        yKnob     += CVIn2();
 
+        // Clamp
+        
+        if (rateKnob < 0 ) rateKnob = 0;
+        if (rateKnob > 4095) rateKnob = 4095;
+        if (depthKnob < 0) depthKnob = 0;
+        if (depthKnob > 4095) depthKnob = 4095;
+
+        if (yKnob < 0) yKnob = 0;
+        if (yKnob > 4095) yKnob = 4095;
+        
+        // Compute norm
+        float norm = (float)rateKnob / 4095.0f;
+        
         //----------------------------------------
         // Mode select
 

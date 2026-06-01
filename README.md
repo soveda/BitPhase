@@ -180,8 +180,7 @@ Mono audio input.
 ### Pulse In
 
 External clock or trigger input.
-
-Used to reset and synchronize the phaser LFO.
+Phaser LFO reset/sync
 
 ---
 
@@ -195,19 +194,16 @@ Main processed signal.
 
 Duplicate of the main processed signal.
 
-Useful for sending the same processed audio to multiple destinations.
 
 ### CV Out 1
 
 Phaser LFO output.
 
-Can be used to modulate external modules.
 
 ### CV Out 2
 
 Tremolo LFO output.
-
-Provides a second modulation source running independently of the phaser sync system.
+.
 
 ### Pulse Out 1
 
