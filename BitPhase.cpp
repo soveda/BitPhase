@@ -167,7 +167,8 @@ public:
         //----------------------------------------
         // Bitcrush / lo-fi (Y now also influences texture slightly)
 
-        int32_t corruption = yKnob;
+
+        int32_t corruption = (yKnob * 3) >> 2;
 
         if (mode == BURST)
             corruption += 1500;
