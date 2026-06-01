@@ -1,161 +1,283 @@
 # BitPhase
 
-BitPhase is a hybrid **analog-style phaser, tremolo, and bit-crush processor** designed for modular-style signal processing.
+BitPhase is a hybrid phaser, tremolo, and digital degradation processor for the Music Thing Modular Workshop Computer.
 
-It combines a classic 4-stage MXR-inspired phaser core with dual-rate LFO modulation, switchable performance modes, and a controlled digital degradation engine for unstable textures.
-
----
-
-## Overview
-
-BitPhase is built around:
-
-- 4-stage all-pass phaser network (MXR-style topology)
-- Feedback-enhanced phase shifting system
-- Dual LFO architecture:
-  - Phaser LFO (primary modulation)
-  - Tremolo LFO (1/4-speed modulation)
-- 3-mode performance switch
-- Bit-crush / sample-hold degradation system
-
-The result is a processor that moves between:
-- Clean phasing movement
-- Rhythmic amplitude modulation
-- Chaotic degraded textures
+Built around a 4-stage all-pass phaser inspired by classic MXR designs, BitPhase combines animated phase movement, modulation-linked tremolo, and controllable lo-fi corruption. It moves from smooth swirling textures to unstable, degraded sounds using a simple three-knob interface and performance-oriented mode switch.
 
 ---
 
-## Modes
+# Features
 
-### ▲ Up — Phaser Only Mode
-- Classic phaser output only
-- Full 4-stage all-pass filtering
-- Feedback-enhanced movement
-- Cleanest tonal response
-
----
-
-### ● Middle — Mix Mode
-- Blends:
-  - Phaser signal
-  - Tremolo amplitude modulation
-- Internal 50/50-style mix
-- Adds rhythmic motion and stereo depth
+* 4-stage all-pass phaser
+* Feedback-enhanced resonance
+* Dual independent LFOs
+* Tremolo modulation
+* Bit reduction and sample-rate reduction
+* Random glitch/repeat corruption
+* Performance-oriented 3-mode operation
+* CV outputs for both modulation sources
+* Pulse output for modulation clocking
 
 ---
 
-### ▼ Down — Burst Mode
-- Extreme instability mode
-- Increased modulation intensity
-- Enhanced bit degradation behaviour
-- Designed for transitions, glitches, and texture collapse
+# Modes
+
+## Up — Phaser
+
+Classic phaser mode.
+
+* 4-stage phaser only
+* Deep feedback-enhanced sweep
+* Cleanest signal path
+* Ideal for subtle movement or aggressive resonant phasing
 
 ---
 
-## Controls
+## Middle — Phaser + Tremolo
 
-### Main Knob (Rate)
-- Controls base modulation speed
-- Drives both LFO systems:
-  - Phaser LFO (full speed)
-  - Tremolo LFO (1/4 speed)
+Combines the phaser and tremolo engines.
 
----
-
-### Knob X (Depth)
-- Controls phaser sweep depth
-- Determines intensity of phase shifting
-- Affects overall movement range
+* Fixed 50/50 blend
+* Phaser movement remains dominant
+* Tremolo adds rhythmic amplitude modulation
+* Creates animated, pulsing textures
 
 ---
 
-### Knob Y (Character / Corruption)
-- Controls bit-crush and sample-hold degradation
-- Adds instability in Burst mode
-- Shapes overall “lo-fi character” of output
+## Down — Burst
+
+A deliberately unstable performance mode.
+
+* Phaser speed jumps to approximately 12 Hz
+* Output gain increases
+* Corruption intensity increases automatically
+* Designed for transitions, breakdowns, glitches, and texture destruction
+
+Burst mode is intentionally aggressive and may introduce extreme modulation artifacts.
 
 ---
 
-## Modulation System
+# Controls
+
+## Main — Rate
+
+Controls both modulation engines.
 
 ### Phaser LFO
-- Triangle-style waveform approximation
-- Full-speed modulation engine
-- Controls:
-  - phaser sweep frequency
-  - stereo movement offset
 
----
+Approximate range:
+
+* 0.05 Hz
+* 6 Hz
+
+The response is curved for finer control at slower speeds.
 
 ### Tremolo LFO
-- Same waveform family
-- Runs at **1/4 speed**
-- Used for amplitude modulation in Mix mode
+
+Approximate range:
+
+* 0.5 Hz
+* 20 Hz
+
+This provides both slow pulsing and audio-rate-style modulation effects.
 
 ---
 
-## Phaser Engine
+## X — Depth
 
-- 4 cascaded all-pass filters
-- Classic MXR-style phase cancellation structure
-- Feedback taken from final stage
-- Tuned for stability while preserving resonance and movement
+Controls the intensity of both modulation engines simultaneously.
 
----
+Affects:
 
-## Bit Degradation Engine
+* Phaser sweep depth
+* Tremolo depth
 
-A controlled digital degradation system featuring:
+As X increases:
 
-- Sample-and-hold reduction
-- Bit masking (bit depth reduction)
-- Random sample repetition (corruption effect)
+* Phaser notches move further
+* Resonance becomes more dramatic
+* Tremolo modulation becomes stronger
 
-This stage is designed to be **musical rather than destructive**.
+The linked behaviour is intentional and forms part of BitPhase's character.
 
 ---
 
-## Stereo Output
+## Y — Corruption
 
-- Mono input processing
-- Stereo enhancement via LFO offset
-- Right channel receives phase-modulated delay movement
+Controls the digital degradation engine.
 
----
+Affects:
 
-## CV Outputs
+* Sample-rate reduction
+* Bit-depth reduction
+* Random sample repetition
 
-- **CV Out 1:** Phaser LFO
-- **CV Out 2:** Tremolo LFO
+Lower settings provide subtle instability.
 
-These outputs can be used to modulate external modular systems.
+Higher settings introduce:
 
----
+* Crunch
+* Stuttering
+* Digital breakup
+* Repeated sample artifacts
 
-## Design Philosophy
-
-BitPhase is built around:
-
-- Analog-inspired phase behaviour
-- Dual time-scale modulation (fast + slow LFOs)
-- Performance-first switching (no menu systems)
-- Controlled instability instead of randomness
-- Musical degradation instead of noise
+In Burst mode, additional corruption is automatically applied.
 
 ---
 
-## Summary
+# Phaser Engine
 
-BitPhase transitions between:
+BitPhase uses four cascaded first-order all-pass stages.
 
-- Classic phaser movement
-- Slow amplitude modulation
-- Degraded lo-fi instability
+Features:
 
-All controlled through a simple interface of **3 knobs + 3-mode switch**.
+* All-pass filter topology
+* Feedback taken from the final stage
+* Variable sweep coefficient
+* Deep notch movement
+* Strong resonant character
+
+The design is inspired by classic MXR-style phasers while intentionally pushing toward more unstable territory.
 
 ---
 
-## License
+# Tremolo Engine
 
-MIT 
+A dedicated tremolo path runs alongside the phaser.
+
+Features:
+
+* Triangle-wave modulation
+* Independent modulation rate
+* Shared depth control with the phaser
+* Available in Mix mode
+
+The tremolo is intentionally linked to phaser behaviour rather than operating as a separate effect.
+
+---
+
+# Corruption Engine
+
+BitPhase includes a built-in digital degradation stage.
+
+Processing includes:
+
+## Sample Hold
+
+Reduces effective sample rate by holding output values for multiple samples.
+
+## Bit Reduction
+
+Masks low-order bits to create digital crunch and reduced resolution.
+
+## Random Repeats
+
+Occasionally repeats previous samples using a pseudo-random generator.
+
+This creates unstable, degraded textures without completely destroying the source material.
+
+---
+
+# Outputs
+
+## Audio Out 1
+
+Main processed output.
+
+## Audio Out 2
+
+Duplicate of Audio Out 1.
+
+Both outputs currently carry the same signal.
+
+---
+
+## CV Out 1
+
+Phaser LFO output.
+
+Approximate range:
+
+* -2048 to +2047
+
+Useful for:
+
+* Filter modulation
+* VCA modulation
+* External CV animation
+
+---
+
+## CV Out 2
+
+Tremolo LFO output.
+
+Approximate range:
+
+* -2048 to +2047
+
+Useful for:
+
+* Fast modulation
+* Rhythmic control signals
+* Synchronised movement elsewhere in a patch
+
+---
+
+## Pulse Out 1
+
+Burst mode status.
+
+* High when Burst mode is active
+* Low otherwise
+
+Can be used to switch or trigger external modules when entering Burst mode.
+
+---
+
+## Pulse Out 2
+
+Square-wave output derived from the Phaser LFO.
+
+Acts as a modulation clock and follows the current phaser rate.
+
+Useful for:
+
+* Clocking events
+* Trigger generation
+* Synchronising external modulation
+
+---
+
+# LED Indicators
+
+| LED   | Function              |
+| ----- | --------------------- |
+| LED 0 | Rate position         |
+| LED 1 | Phaser LFO activity   |
+| LED 2 | Phaser sweep position |
+| LED 3 | Corruption amount     |
+| LED 4 | Burst mode active     |
+| LED 5 | Pulse input monitor   |
+
+---
+
+# Design Philosophy
+
+BitPhase is not intended to be a faithful recreation of any single vintage phaser.
+
+Instead it combines:
+
+* Analog-inspired phase movement
+* Modulation-linked behaviour
+* Controlled digital degradation
+* Performance-oriented switching
+* Intentional instability
+
+The goal is to blur the line between traditional modulation effects and damaged digital processing.
+
+---
+
+# License
+
+MIT License
