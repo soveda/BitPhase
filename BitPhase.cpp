@@ -52,15 +52,15 @@ public:
         
         if (mode != BURST)
         {
-            uint32_t increment =
-            30000 + ((uint32_t)rateKnob * 1200000) / 4095;
-            
             phaserPhase += phaserInc;
             tremPhase   += tremInc;
             }
         else
         {
-            phaserPhase += 200000; // unstable fast motion
+            float burstHz = 12.0f;
+
+            phaserPhase +=
+                (uint32_t)((burstHz * PHASE_SCALE) / FS);
             tremPhase   += 50000;
         }
         
@@ -71,7 +71,7 @@ public:
         {
             uint32_t v = (p >> 20) & 4095;
             int32_t x = (v < 2048) ? v : (4095 - v);
-            return x - 2048;
+            return (x - 1024) << 1;
         };
 
         int32_t phaserLfo = triLFO(phaserPhase);
