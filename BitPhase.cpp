@@ -30,7 +30,21 @@ public:
             case Switch::Middle:mode = MIX; break;
             default:            mode = BURST; break;
         }
+        
+        //-----------------------------------------
+        //Pulse sync
+        
+        
+        bool pulse = PulseIn1();
 
+        if (pulse && !lastPulse)
+        {
+            phaserPhase = 0;
+        }
+
+        lastPulse = pulse;
+        
+        
         //----------------------------------------
         // LFO clocks
         
@@ -257,6 +271,8 @@ private:
     int32_t heldSample = 0;
 
     int32_t previousOutput = 0;
+    
+    bool lastPulse = false;
 };
 
 int main()
