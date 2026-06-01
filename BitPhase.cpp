@@ -226,8 +226,7 @@ public:
         if (lfoLed > 4095) lfoLed = 4095;
         LedBrightness(1, lfoLed);
 
-        int32_t sweepLed = sweep;
-        LedBrightness(2, (sweep * 4095) / 1920);
+        LedBrightness(2, (sweep * 4095) / 3000);
 
         int32_t corrLed = corruption;
         if (corrLed > 4095) corrLed = 4095;
