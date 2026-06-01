@@ -78,10 +78,10 @@ public:
         int32_t tremLfo   = triLFO(tremPhase);
 
         //----------------------------------------
-        // Depth control (Y = phaser intensity)
+        // Depth control (X = phaser intensity)
 
         int32_t sweep =
-            1024 + ((phaserLfo * yKnob) >> 13);
+            768 + ((phaserLfo * depthKnob) >> 12);;
 
         if (sweep < 96)   sweep = 96;
         if (sweep > 1920) sweep = 1920;
@@ -117,9 +117,9 @@ public:
         y = ap4_z1 + (((sweep * (x - ap4_y1)) >> 11));
         ap4_z1 = x; ap4_y1 = y;
 
-        int32_t phaser = in - (y >> 1);
+        int32_t phaser = ((in * 3) >> 2) - y;
 
-        fb = (y * 3) >> 3; // 0.375 feedback
+        fb = y >> 1;         // 0.5
 
         //----------------------------------------
         // Mode routing
@@ -202,7 +202,7 @@ public:
         LedBrightness(1, lfoLed);
 
         int32_t sweepLed = sweep;
-        LedBrightness(2, sweepLed);
+        LedBrightness(2, (sweep * 4095) / 1920);
 
         int32_t corrLed = corruption;
         if (corrLed > 4095) corrLed = 4095;
