@@ -172,7 +172,7 @@ public:
         int32_t phaser =
             ((in * 7) >> 3) - y;
 
-        fb = 0;
+        fb = y >> 2;
 
         //DC blocker
         
