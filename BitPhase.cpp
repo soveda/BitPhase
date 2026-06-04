@@ -108,11 +108,13 @@ public:
         //----------------------------------------
         // Depth control (X = phaser intensity)
 
-        int32_t sweep =
-            2048 + ((phaserLfo * depthKnob) >> 12);
+        int32_t center = 2048;
 
-        if (sweep < 512)  sweep = 512;
-        if (sweep > 3584) sweep = 3584;
+        int32_t mod =
+            (phaserLfo * depthKnob) >> 12;
+
+        int32_t sweep = center + mod;
+        
         //----------------------------------------
         // Tremolo
 
@@ -143,10 +145,10 @@ public:
         // spread stages slightly
         // spread stages like Grand Orbiter
 
-        int32_t c1 = coeff;
-        int32_t c2 = coeff - 250;
-        int32_t c3 = coeff - 500;
-        int32_t c4 = coeff - 750;
+        int32_t c1 = coeff - 300;
+        int32_t c2 = coeff - 100;
+        int32_t c3 = coeff + 100;
+        int32_t c4 = coeff + 300;
 
         // keep all stages stable
         if (c2 > 1800) c2 = 1800;
@@ -188,7 +190,7 @@ public:
         int32_t phaser = (input - wet) >> 1;
 
         // feedback
-        fb = wet >> 1;
+        fb = wet >> 2;
 
         // DC blocker
         dc += (phaser - dc) >> 10;
