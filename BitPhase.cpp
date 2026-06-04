@@ -115,6 +115,9 @@ public:
 
         int32_t sweep = center + mod;
         
+        if (sweep < 512)  sweep = 512;
+        if (sweep > 3584) sweep = 3584;
+        
         //----------------------------------------
         // Tremolo
 
@@ -151,6 +154,9 @@ public:
         int32_t c4 = coeff + 300;
 
         // keep all stages stable
+        if (c1 > 1800) c1 = 1800;
+        if (c1 < -1800) c1 = -1800;
+        
         if (c2 > 1800) c2 = 1800;
         if (c2 < -1800) c2 = -1800;
 
@@ -282,7 +288,9 @@ public:
         if (lfoLed > 4095) lfoLed = 4095;
         LedBrightness(1, lfoLed);
 
-        LedBrightness(2, (sweep * 4095) / 3000);
+        int32_t sweepLed = sweep;
+        if (sweepLed > 4095) sweepLed = 4095;
+        LedBrightness(2, sweepLed);
 
         int32_t corrLed = corruption;
         if (corrLed > 4095) corrLed = 4095;
