@@ -137,10 +137,8 @@ public:
         int32_t input = in + (fb >> 1);
 
         // sweep -> allpass coefficient
-        int32_t coeff = sweep - 2048;
-
-        // scale into stable range
-        coeff = (coeff * 1800) >> 11;
+        int32_t coeff =
+            400 + ((sweep * 1400) >> 12);
 
         if (coeff > 1800) coeff = 1800;
         if (coeff < -1800) coeff = -1800;
@@ -148,10 +146,10 @@ public:
         // spread stages slightly
         // spread stages like Grand Orbiter
 
-        int32_t c1 = coeff - 300;
+        int32_t c1 = coeff;
         int32_t c2 = coeff - 100;
-        int32_t c3 = coeff + 100;
-        int32_t c4 = coeff + 300;
+        int32_t c3 = coeff - 200;
+        int32_t c4 = coeff - 300;
 
         // keep all stages stable
         if (c1 > 1800) c1 = 1800;
