@@ -169,10 +169,10 @@ public:
 
         ap4_x1 = x;
         ap4_y1 = y;
-        int32_t phaser =
-            ((in * 7) >> 3) - y;
-
-        fb = y >> 2;
+        // coment out to check  int32_t phaser =
+        //    ((in * 7) >> 3) - y;
+        
+        fb = 0;
 
         //DC blocker
         

@@ -11,7 +11,6 @@ public:
     {
         int32_t in = AudioIn1();
         
-        
         int32_t rateKnob  = KnobVal(Knob::Main);
         int32_t depthKnob = KnobVal(Knob::X);
         int32_t yKnob     = KnobVal(Knob::Y);
@@ -30,8 +29,7 @@ public:
         if (yKnob < 0) yKnob = 0;
         if (yKnob > 4095) yKnob = 4095;
         
-        // Compute norm
-        float norm = (float)rateKnob / 4095.0f;
+       
         
         //----------------------------------------
         // Mode select
@@ -63,15 +61,16 @@ public:
         //----------------------------------------
         // LFO clocks
         
-        float slowAmt = norm * norm;   // from earlier knob normalization
+        float ratenorm = (float)rateKnob / 4095.0f;
+
+        float slowAmt = ratenorm * ratenorm;
+        float fastAmt = ratenorm;   // from earlier knob normalization
 
         float phaserHz = 0.05f + slowAmt * (6.0f - 0.05f);
 
         uint32_t phaserInc =
             (uint32_t)((phaserHz * PHASE_SCALE) / FS);
 
-        
-        float fastAmt = norm;
 
         float tremHz = 0.5f + fastAmt * (20.0f - 0.5f);
 
@@ -109,11 +108,11 @@ public:
         //----------------------------------------
         // Depth control (X = phaser intensity)
 
-        int32_t sweep = 1500 + ((phaserLfo * depthKnob) >> 12);
+        int32_t sweep =
+            2048 + ((phaserLfo * depthKnob) >> 12);
 
-        if (sweep < 200)  sweep = 200;
-        if (sweep > 2800) sweep = 2800;
-
+        if (sweep < 512)  sweep = 512;
+        if (sweep > 3584) sweep = 3584;
         //----------------------------------------
         // Tremolo
 
@@ -125,58 +124,74 @@ public:
         int32_t tremolo =
             (in * tremGain) >> 11;
 
+        //int32_t tremolo = in;
+        
         //----------------------------------------
-        // MXR-style 4-stage phaser with feedback
+        // Grand Orbiter style phaser
 
-        int32_t input = in + ((fb * 3000) >> 12);
+        int32_t input = in + (fb >> 1);
+
+        // sweep -> allpass coefficient
+        int32_t coeff = sweep - 2048;
+
+        // scale into stable range
+        coeff = (coeff * 1800) >> 11;
+
+        if (coeff > 1800) coeff = 1800;
+        if (coeff < -1800) coeff = -1800;
+
+        // spread stages slightly
+        // spread stages like Grand Orbiter
+
+        int32_t c1 = coeff;
+        int32_t c2 = coeff - 250;
+        int32_t c3 = coeff - 500;
+        int32_t c4 = coeff - 750;
+
+        // keep all stages stable
+        if (c2 > 1800) c2 = 1800;
+        if (c2 < -1800) c2 = -1800;
+
+        if (c3 > 1800) c3 = 1800;
+        if (c3 < -1800) c3 = -1800;
+
+        if (c4 > 1800) c4 = 1800;
+        if (c4 < -1800) c4 = -1800;
+
+        auto allpass = [](int32_t x,
+                          int32_t a,
+                          int32_t &x1,
+                          int32_t &y1)
+        {
+            int32_t y =
+                (((-a * x) >> 11) +
+                  x1 +
+                 ((a * y1) >> 11));
+
+            x1 = x;
+            y1 = y;
+
+            return y;
+        };
 
         int32_t x = input;
-        int32_t y;
 
-        int32_t a = sweep;
+        x = allpass(x, c1, ap1_x1, ap1_y1);
+        x = allpass(x, c2, ap2_x1, ap2_y1);
+        x = allpass(x, c3, ap3_x1, ap3_y1);
+        x = allpass(x, c4, ap4_x1, ap4_y1);
 
-        // stage 1
-        y = ap1_x1 +
-            ((a * ap1_y1) >> 12) -
-            ((a * x) >> 12);
+        // wet path
+        int32_t wet = x;
 
-        ap1_x1 = x;
-        ap1_y1 = y;
-        x = y;
+        // classic phaser mix
+        int32_t phaser = (input - wet) >> 1;
 
-        // stage 2
-        y = ap2_x1 +
-            ((a * ap2_y1) >> 12) -
-            ((a * x) >> 12);
+        // feedback
+        fb = wet >> 1;
 
-        ap2_x1 = x;
-        ap2_y1 = y;
-        x = y;
-
-        // stage 3
-        y = ap3_x1 +
-            ((a * ap3_y1) >> 12) -
-            ((a * x) >> 12);
-
-        ap3_x1 = x;
-        ap3_y1 = y;
-        x = y;
-
-        // stage 4
-        y = ap4_x1 +
-            ((a * ap4_y1) >> 12) -
-            ((a * x) >> 12);
-
-        ap4_x1 = x;
-        ap4_y1 = y;
-        int32_t phaser =
-            ((in * 7) >> 3) - y;
-
-        fb = 0;
-
-        //DC blocker
-        
-        dc = dc + ((phaser - dc) >> 10);
+        // DC blocker
+        dc += (phaser - dc) >> 10;
         phaser -= dc;
         
         //----------------------------------------
@@ -201,13 +216,13 @@ public:
         // Bitcrush / lo-fi (Y now also influences texture slightly)
 
 
-        int32_t corruption = (yKnob * 3) >> 2;
+        int32_t corruption = (yKnob * 5) >> 3;
 
         if (mode == BURST)
             corruption += 1500;
 
-        if (corruption > 4095)
-            corruption = 4095;
+        if (corruption > 3500)
+            corruption = 3500;
 
         uint32_t holdLength = 1 + (corruption >> 8);
 
@@ -229,7 +244,12 @@ public:
             output = previousOutput;
 
         previousOutput = output;
-
+        
+        // lo pass filtration
+        
+        lp += (output - lp) >> 4;
+        output = lp;
+        
         //----------------------------------------
         // Output
 
@@ -283,7 +303,8 @@ private:
     int32_t ap3_x1 = 0, ap3_y1 = 0;
     int32_t ap4_x1 = 0, ap4_y1 = 0;
     int32_t fb = 0;
-
+    int32_t lp = 0;
+    
     uint32_t rng = 1;
 
     uint32_t holdCounter = 0;
