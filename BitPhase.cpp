@@ -191,10 +191,10 @@ public:
         int32_t wet = x;
 
         // classic phaser mix
-        int32_t phaser = (input - wet) >> 1;
+        int32_t phaser = input + ((input - wet) >> 1);
 
         // feedback
-        fb = wet >> 2;
+        fb = wet >> 1;
 
         // DC blocker
         dc += (phaser - dc) >> 10;
