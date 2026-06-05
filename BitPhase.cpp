@@ -122,9 +122,10 @@ public:
         // Tremolo
 
         int32_t tremGain =
-            2048 + ((tremLfo * depthKnob) >> 12);
+            2048 + ((tremLfo * yKnob) >> 11);
 
-        if (tremGain < 0) tremGain = 0;
+        if (tremGain < 0)
+            tremGain = 0;
 
         int32_t tremolo =
             (in * tremGain) >> 11;
@@ -138,7 +139,7 @@ public:
 
         // sweep -> allpass coefficient
         int32_t coeff =
-            400 + ((sweep * 1400) >> 12);
+            100 + ((sweep * 1800) >> 12);
 
         if (coeff > 1800) coeff = 1800;
         if (coeff < -1800) coeff = -1800;
@@ -146,10 +147,10 @@ public:
         // spread stages slightly
         // spread stages like Grand Orbiter
 
-        int32_t c1 = coeff;
+        int32_t c1 = coeff - 300;
         int32_t c2 = coeff - 100;
-        int32_t c3 = coeff - 200;
-        int32_t c4 = coeff - 300;
+        int32_t c3 = coeff + 100;
+        int32_t c4 = coeff + 300;
 
         // keep all stages stable
         if (c1 > 1800) c1 = 1800;
@@ -191,66 +192,71 @@ public:
         int32_t wet = x;
 
         // classic phaser mix
-        int32_t phaser = input + ((input - wet) >> 1);
-
-        // feedback
-        fb = wet >> 1;
+        int32_t phaser =
+            ((input * 3072) -
+             (wet   * 2048)) >> 12;
+        
+        int32_t tremPhaser =
+            (phaser * tremGain) >> 11;
 
         // DC blocker
         dc += (phaser - dc) >> 10;
         phaser -= dc;
         
+        // feedback
+        fb = (wet * 3) >> 2;   // 75%
+
+       
+        
         //----------------------------------------
         // Mode routing
 
         int32_t output = phaser;
-
+        
+        int32_t corruption = (yKnob * 5) >> 3;
+        
         if (mode == MIX)
         {
-            int32_t mix = 2048; // 50/50 fixed mix
-
             output =
-                ((phaser * mix) +
-                 (tremolo * (4095 - mix))) >> 12;
+                (phaser + tremPhaser) >> 1;
         }
         else if (mode == BURST)
         {
             output = phaser + (phaser >> 1);
+            
+            
+            //----------------------------------------
+            // Bitcrush / lo-fi (Y now also influences texture slightly)
+            
+            
+            
+            
+                corruption += 1500;
+            
+            if (corruption > 3500)
+                corruption = 3500;
+            
+            uint32_t holdLength = 1 + (corruption >> 8);
+            
+            if (++holdCounter >= holdLength)
+            {
+                heldSample = output;
+                holdCounter = 0;
+            }
+            
+            output = heldSample;
+            
+            uint32_t maskShift = corruption >> 10;
+            output = (output >> maskShift) << maskShift;
+            
+            rng = rng * 1664525u + 1013904223u;
+            
+            uint32_t repeatChance = corruption >> 3;
+            if ((rng & 0x3FF) < repeatChance)
+                output = previousOutput;
+            
+            previousOutput = output;
         }
-
-        //----------------------------------------
-        // Bitcrush / lo-fi (Y now also influences texture slightly)
-
-
-        int32_t corruption = (yKnob * 5) >> 3;
-
-        if (mode == BURST)
-            corruption += 1500;
-
-        if (corruption > 3500)
-            corruption = 3500;
-
-        uint32_t holdLength = 1 + (corruption >> 8);
-
-        if (++holdCounter >= holdLength)
-        {
-            heldSample = output;
-            holdCounter = 0;
-        }
-
-        output = heldSample;
-
-        uint32_t maskShift = corruption >> 10;
-        output = (output >> maskShift) << maskShift;
-
-        rng = rng * 1664525u + 1013904223u;
-
-        uint32_t repeatChance = corruption >> 3;
-        if ((rng & 0x3FF) < repeatChance)
-            output = previousOutput;
-
-        previousOutput = output;
-        
         // lo pass filtration
         
         lp += (output - lp) >> 4;
