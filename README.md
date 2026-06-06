@@ -1,6 +1,3 @@
-Here’s a clean README that matches your **current final code exactly**, including the corrected phaser mix, feedback, tremolo behavior, and the capped burst corruption logic.
-
----
 
 # BitPhase
 
