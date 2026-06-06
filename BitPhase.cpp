@@ -16,8 +16,11 @@ public:
         int32_t yKnob     = KnobVal(Knob::Y);
         
         // CV modulation
-        depthKnob += CVIn1();
-        yKnob     += CVIn2();
+        int32_t depthCV = CVIn1() >> 3;
+        int32_t yCV     = CVIn2() >> 3;
+
+        depthKnob += depthCV;
+        yKnob     += yCV;
 
         // Clamp
         
@@ -211,48 +214,93 @@ public:
         int32_t corruption = (yKnob * 5) >> 3;
 
         if (mode == BURST)
-            corruption += 2500;
+            corruption += 1500;
 
-        if (corruption > 3800)
-            corruption = 3800;
+        if (corruption > 3000)
+            corruption = 3000;
 
         //----------------------------------------
         // Mode routing
 
         int32_t output = phaser;
-
+        
+        if (mode == PHASER_ONLY)
+        {
+            depthKnob += (depthCV >> 3);   // gentle depth modulation
+            yKnob     += (yCV >> 4);       // very light grit influence
+        }
+        
         if (mode == MIX)
         {
+            
+            depthKnob += (depthCV >> 2);   // stronger phaser movement
+            yKnob     += (yCV >> 3);       // moderate degradation modulation
             output =
                 ((phaser * 2048) +
                  (tremPhaser * 2048)) >> 12;
         }
         else if (mode == BURST)
         {
-            output = phaser + (phaser >> 1);
+            int32_t dry = phaser + (phaser >> 1);
+            
+          depthKnob += (depthCV >> 2);   // still affects motion
 
-            uint32_t holdLength = 1 + (corruption >> 6);
+                // Y CV becomes "chaos scaling", but heavily controlled
+            int32_t burstCV = yCV >> 3;
+
+            yKnob += burstCV;
+
+                // safety clamp BEFORE corruption uses it
+            if (yKnob > 3000) yKnob = 3000;   // key safety ceiling
+            
+            //----------------------------------------
+            // Sample & Hold (slightly more active)
+
+            uint32_t holdLength = 1 + (corruption >> 8);
+            if (holdLength > 24) holdLength = 24;  // slightly tighter than before
 
             if (++holdCounter >= holdLength)
             {
-                heldSample = output;
+                heldSample = dry;
                 holdCounter = 0;
             }
 
-            output = heldSample;
+            int32_t held = heldSample;
+
+            // blend (keeps presence)
+            output = (dry * 2816 + held * 1216) >> 12;
+
+            //----------------------------------------
+            // Bit reduction (slightly stronger but still musical)
 
             uint32_t maskShift = corruption >> 10;
-            output = (output >> maskShift) << maskShift;
+            if (maskShift > 6) maskShift = 6;
+
+            int32_t crushed = (output >> maskShift) << maskShift;
+
+            output = (output * 2560 + crushed * 1536) >> 12;
+
+            //----------------------------------------
+            // Repeat corruption (a bit more active)
 
             rng = rng * 1664525u + 1013904223u;
 
-            uint32_t repeatChance = corruption >> 2;
+            uint32_t repeatChance = corruption >> 3;
+            if (repeatChance > 640) repeatChance = 640;
 
             if ((rng & 0x3FF) < repeatChance)
-                output = previousOutput;
+            {
+                output = (output * 1792 + previousOutput * 2304) >> 12;
+            }
 
             previousOutput = output;
+            
+            // keep energy alive (prevents perceived collapse)
+            int32_t presence = dry + (dry >> 2);  // +25% reinforcement
+            output = (output * 3072 + presence * 1024) >> 12;
         }
+        
+        output = (output * 9) >> 3;  // +12dB-ish compensation
         
         // lo pass filtration
         
