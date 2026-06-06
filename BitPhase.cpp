@@ -127,8 +127,6 @@ public:
         if (tremGain < 0)
             tremGain = 0;
 
-        int32_t tremolo =
-            (in * tremGain) >> 11;
 
         //int32_t tremolo = in;
         
@@ -139,10 +137,10 @@ public:
 
         // sweep -> allpass coefficient
         int32_t coeff =
-            100 + ((sweep * 1800) >> 12);
+            100 + ((sweep * 2200) >> 12);
 
-        if (coeff > 1800) coeff = 1800;
-        if (coeff < -1800) coeff = -1800;
+        if (coeff > 2200) coeff = 2200;
+        if (coeff < -2200) coeff = -2200;
 
         // spread stages slightly
         // spread stages like Grand Orbiter
@@ -193,8 +191,8 @@ public:
 
         // classic phaser mix
         int32_t phaser =
-            ((input * 3072) -
-             (wet   * 2048)) >> 12;
+            ((input * 4096) -
+             (wet   * 3072)) >> 12;
         
         int32_t tremPhaser =
             (phaser * tremGain) >> 11;
@@ -204,63 +202,62 @@ public:
         phaser -= dc;
         
         // feedback
-        fb = (wet * 3) >> 2;   // 75%
+        fb = wet >> 1;   // 50%
 
-       
         
+        //----------------------------------------
+        // Corruption amount
+
+        int32_t corruption = (yKnob * 5) >> 3;
+
+        if (mode == BURST)
+            corruption += 2500;
+
+        if (corruption > 3800)
+            corruption = 3800;
+
         //----------------------------------------
         // Mode routing
 
         int32_t output = phaser;
-        
-        int32_t corruption = (yKnob * 5) >> 3;
-        
+
         if (mode == MIX)
         {
             output =
-                (phaser + tremPhaser) >> 1;
+                ((phaser * 2048) +
+                 (tremPhaser * 2048)) >> 12;
         }
         else if (mode == BURST)
         {
             output = phaser + (phaser >> 1);
-            
-            
-            //----------------------------------------
-            // Bitcrush / lo-fi (Y now also influences texture slightly)
-            
-            
-            
-            
-                corruption += 1500;
-            
-            if (corruption > 3500)
-                corruption = 3500;
-            
-            uint32_t holdLength = 1 + (corruption >> 8);
-            
+
+            uint32_t holdLength = 1 + (corruption >> 6);
+
             if (++holdCounter >= holdLength)
             {
                 heldSample = output;
                 holdCounter = 0;
             }
-            
+
             output = heldSample;
-            
+
             uint32_t maskShift = corruption >> 10;
             output = (output >> maskShift) << maskShift;
-            
+
             rng = rng * 1664525u + 1013904223u;
-            
-            uint32_t repeatChance = corruption >> 3;
+
+            uint32_t repeatChance = corruption >> 2;
+
             if ((rng & 0x3FF) < repeatChance)
                 output = previousOutput;
-            
+
             previousOutput = output;
         }
+        
         // lo pass filtration
         
-        lp += (output - lp) >> 4;
-        output = lp;
+        //lp += (output - lp) >> 5;
+        //output = lp;
         
         //----------------------------------------
         // Output
