@@ -15,13 +15,10 @@ public:
         int32_t depthKnob = KnobVal(Knob::X);
         int32_t yKnob     = KnobVal(Knob::Y);
         
-        // CV modulation
-        int32_t depthCV = CVIn1() >> 3;
-        int32_t yCV     = CVIn2() >> 3;
+        // CV inputs
 
-        depthKnob += depthCV;
-        yKnob     += yCV;
-
+        int32_t rateCV = CVIn1();
+        int32_t resCV  = CVIn2();
         // Clamp
         
         if (rateKnob < 0 ) rateKnob = 0;
@@ -64,7 +61,14 @@ public:
         //----------------------------------------
         // LFO clocks
         
-        float ratenorm = (float)rateKnob / 4095.0f;
+        int32_t modRate =
+            rateKnob + (rateCV >> 1);
+
+        if (modRate < 0) modRate = 0;
+        if (modRate > 4095) modRate = 4095;
+
+        float ratenorm =
+            (float)modRate / 4095.0f;
 
         float slowAmt = ratenorm * ratenorm;
         float fastAmt = ratenorm;   // from earlier knob normalization
@@ -136,7 +140,7 @@ public:
         //----------------------------------------
         // Grand Orbiter style phaser
 
-        int32_t input = in + (fb >> 1);
+        int32_t input = in + fb;
 
         // sweep -> allpass coefficient
         int32_t coeff =
@@ -183,6 +187,7 @@ public:
         };
 
         int32_t x = input;
+        //input += (input - fb) >> 1;
 
         x = allpass(x, c1, ap1_x1, ap1_y1);
         x = allpass(x, c2, ap2_x1, ap2_y1);
@@ -199,14 +204,44 @@ public:
         
         int32_t tremPhaser =
             (phaser * tremGain) >> 11;
-
+        //makeup gain
+        phaser = (phaser * 3) >> 1;   // 1.5x
+        
         // DC blocker
         dc += (phaser - dc) >> 10;
         phaser -= dc;
         
-        // feedback
-        fb = wet >> 1;   // 50%
+        
+        //feedback
+       
+        int32_t resonance =
+            yKnob + (resCV >> 1);
 
+        if (resonance < 0)
+            resonance = 0;
+
+        if (resonance > 4095)
+            resonance = 4095;
+
+        // 25% -> 115% feedback
+        int32_t feedbackAmt;
+
+        if (resonance < 3600)
+        {
+            feedbackAmt =
+                512 + ((resonance * 1300) >> 12);
+        }
+        else
+        {
+            int32_t extra = resonance - 3600;
+
+            feedbackAmt =
+                1650 + ((extra * 450) >> 9);
+        }
+        fb = (wet * feedbackAmt) >> 11;
+
+        if (fb > 25000) fb = 25000;
+        if (fb < -25000) fb = -25000;
         
         //----------------------------------------
         // Corruption amount
@@ -224,17 +259,8 @@ public:
 
         int32_t output = phaser;
         
-        if (mode == PHASER_ONLY)
-        {
-            depthKnob += (depthCV >> 3);   // gentle depth modulation
-            yKnob     += (yCV >> 4);       // very light grit influence
-        }
-        
         if (mode == MIX)
         {
-            
-            depthKnob += (depthCV >> 2);   // stronger phaser movement
-            yKnob     += (yCV >> 3);       // moderate degradation modulation
             output =
                 ((phaser * 2048) +
                  (tremPhaser * 2048)) >> 12;
@@ -242,17 +268,7 @@ public:
         else if (mode == BURST)
         {
             int32_t dry = phaser + (phaser >> 1);
-            
-          depthKnob += (depthCV >> 2);   // still affects motion
-
-                // Y CV becomes "chaos scaling", but heavily controlled
-            int32_t burstCV = yCV >> 3;
-
-            yKnob += burstCV;
-
-                // safety clamp BEFORE corruption uses it
-            if (yKnob > 3000) yKnob = 3000;   // key safety ceiling
-            
+           
             //----------------------------------------
             // Sample & Hold (slightly more active)
 
